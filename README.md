@@ -1,85 +1,56 @@
 # BackupApp
 
-Profesjonalna aplikacja desktopowa (.NET 8 WPF) dla systemu Windows, przeznaczona do automatycznego i bezpiecznego tworzenia kopii zapasowych na zewnętrznych nośnikach USB oraz udziałach sieciowych (SMB/NAS).
+Aplikacja do tworzenia kopii zapasowych na zewnętrznych nośnikach USB oraz udziałach sieciowych (SMB/NAS).
 
-Projekt kładzie szczególny nacisk na integralność kryptograficzną danych, izolację zasobów sieciowych przed złośliwym oprogramowaniem (ransomware) oraz automatyzację scenariuszy.
+## Instalacja
 
----
-
-## Główne możliwości aplikacji
-
-### 1. Elastyczne profile i reguły selekcji
-* **Profile zadań (Presety):** Dowolna liczba profili z niezależnymi listami źródeł, regułami i ścieżkami docelowymi.
-* **Tryb selekcji plików:**
-  * **Wszystkie pliki:** Pełna rekurencyjna kopia wskazanych katalogów i plików.
-  * **Tylko najnowszy podfolder:** Inteligentna selekcja najświeższego katalogu w danym zasobie (np. ostatni eksport bazy danych lub projekt z dzisiejszą datą).
-* **Centralna synchronizacja:** Możliwość współdzielenia profili w sieci lokalnej (plik `config.json` na centralnym serwerze SMB/NAS).
-
-### 2. Kryptograficzna weryfikacja i raportowanie
-* **Weryfikacja SHA-256:** Każdy skopiowany plik jest weryfikowany poprzez obliczenie i porównanie sumy kontrolnej SHA-256 ze źródłem.
-* **Plik sum kontrolnych:** Generowanie standardowego pliku `checksums.sha256` w folderze docelowym (zgodnego z narzędziem `sha256sum`).
-* **Raport wykonawczy:** Zapis pliku `backup_summary.txt` zawierającego pełną statystykę: liczbę przetworzonych plików, objętość danych, prędkość transferu oraz status integralności.
-
-### 3. Łańcuch zadań i automatyzacja scenariuszy
-* **Wyzwalacze uruchomienia:**
-  * **Zdarzeniowy:** Automatyczny start procedury w ułamku sekundy po fizycznym wpięciu dedykowanego pendrive'a/dysku USB do komputera.
-  * **Cykliczny:** Uruchomienie o wyznaczonej godzinie (np. codziennie o 18:00).
-* **Wzbudzanie nośnika USB (PnP Rescan):** Ponowne zamontowanie dysku, który pozostaje stale wpięty w porcie USB, lecz został programowo odmontowany po poprzedniej kopii.
-* **Bezpieczne odłączenie sprzętowe:** Opróżnienie buforów zapisu systemu Windows i fizyczne odmontowanie/wysunięcie dysku USB (`FSCTL_DISMOUNT_VOLUME`, `IOCTL_STORAGE_EJECT_MEDIA`).
-
-### 4. Izolacja zasobów sieciowych (Ochrona przed Ransomware)
-* **Dynamiczne sesje SMB:** Aplikacja zestawia połączenie z udziałem sieciowym UNC (`\\serwer\udzial`) tuż przed rozpoczęciem transferu przy użyciu Windows Networking API (`WNetAddConnection2`).
-* **Odłączanie po zakończeniu:** Natychmiast po ukończeniu kopii sesja SMB jest niszczona (`WNetCancelConnection2`). Udział nie pozostaje stale zmapowany w systemie operacyjnym, uniemożliwiając wirusom szyfrującym (ransomware) zainfekowanie zasobów na serwerze NAS.
-* **Bezpieczeństwo poświadczeń:** Integracja z Menedżerem poświadczeń Windows oraz szyfrowanie haseł lokalnych mechanizmem Windows Data Protection API (DPAPI).
-
-### 5. Powiadomienia e-mail (SMTP TLS)
-* Bezpośrednia wysyłka szyfrowanego raportu e-mail (sukces lub szczegółowy log błędów) po zakończeniu procedury kopii.
-
-### 6. Wbudowany moduł auto-update
-* Bezpośrednia integracja z repozytorium GitHub Releases (`JasperBTA/BackAPP`).
-* Sprawdzanie dostępności nowej wersji przy starcie w tle lub na żądanie.
-* Pobieranie instalatora i cicha aktualizacja aplikacji jednym kliknięciem.
+Pobierz najnowszą wersję instalatora (`BackupApp_Setup.exe`) lub paczkę przenośną (`BackupApp_Portable.zip`) z zakładki [Releases](../../releases).
 
 ---
 
-## Wymagania systemowe
+## Konfiguracja profilu kopii zapasowej
 
-* **System operacyjny:** Windows 10 (wersja 1809 lub nowsza) / Windows 11 (architektura x64).
-* **Środowisko uruchomieniowe:** Brak dodatkowych wymagań dla wersji instalacyjnej (pakiet Self-Contained z wbudowanym .NET 8 Runtime).
+1. **Wybór nośnika docelowego:**
+   * Wybierz podłączony dysk USB z listy rozwijanej w prawej kolumnie.
+   * W razie potrzeby użyj przycisku odświeżenia listy napędów.
 
----
+2. **Definiowanie źródeł:**
+   * Dodaj katalogi lub pliki za pomocą przycisków wyboru folderu / pliku.
+   * W przypadku zasobów sieciowych podaj ścieżkę UNC (np. `\\serwer\udzial\katalog`).
 
-## Budowanie ze źródeł
+3. **Reguła selekcji:**
+   * **Wszystkie pliki:** Kopiuje całą zawartość wskazanych ścieżek źródłowych.
+   * **Tylko najnowszy podfolder:** Kopiuje wyłącznie najświeższy podkatalog znajdujący się w ścieżce źródłowej (np. ostatni dzienny eksport bazy).
 
-### Wymagania do kompilacji:
-* .NET 8.0 SDK
-* Inno Setup 6 (do wygenerowania instalatora `BackupApp_Setup.exe`)
-
-### Kompilacja aplikacji:
-```powershell
-dotnet build BackupApp.csproj -c Release
-```
-
-### Generowanie pełnego instalatora i paczki Portable:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\build_installer.ps1
-```
-Wygenerowane pakiety znajdą się w katalogu `installer_output/`:
-* `BackupApp_Setup.exe` (Instalator Windows)
-* `BackupApp_Portable.zip` (Wersja przenośna)
+4. **Weryfikacja integralności:**
+   * Weryfikacja sum SHA-256 – program porównuje sumy kontrolne plików źródłowych ze skopiowanymi oraz generuje pliki `checksums.sha256` i `backup_summary.txt` na nośniku docelowym.
 
 ---
 
-## Automatyzacja CI/CD (GitHub Actions)
+## Moduł harmonogramu i automatyzacji
 
-Projekt zawiera skonfigurowane procesy GitHub Actions w katalogu `.github/workflows/`:
-* **`ci.yml`:** Automatyczna weryfikacja kompilacji przy każdym commicie i Pull Requeście na gałąź `main`.
-* **`release.yml`:** Automatyczne budowanie instalatora oraz publikacja nowego wydania w GitHub Releases po utworzeniu tagu wersji (np. `v1.0.0`) lub po ręcznym wywołaniu z zakładki *Actions*.
+Konfiguracja dostępna pod przyciskiem **Moduł harmonogramu...** w nagłówku aplikacji.
+
+### Wyzwalacze uruchomienia:
+* **Aktywacja przez wydarzenie (wpięcie dysku USB):** Proces rozpoczyna się automatycznie po fizycznym podłączeniu nośnika do komputera.
+* **Aktywacja cykliczna:** Uruchamia kopię codziennie o wskazanej godzinie (np. 18:00).
+
+### Akcje wstępne i końcowe:
+* **Podłączanie udziałów sieciowych:** Nawiązuje sesję SMB przed transferem, korzystając z poświadczeń zapisanych w Menedżerze poświadczeń Windows.
+* **Odłączanie udziałów sieciowych:** Zamyka sesję SMB natychmiast po zakończeniu kopiowania.
+* **Wzbudź / zamontuj dysk USB (rescan PnP):** Wymusza ponowne wykrycie odmontowanego nośnika stale wpiętego do portu przed uruchomieniem zadania cyklicznego.
+* **Bezpiecznie odłącz / wysuń nośnik:** Odmontowuje wolumin USB po zakończeniu kopiowania.
+
+### Powiadomienia e-mail (SMTP):
+* Konfiguracja serwera SMTP (np. host, port 587, szyfrowanie SSL/TLS, login i hasło).
+* Hasło zapisywane jest w postaci zaszyfrowanej przy użyciu Windows DPAPI.
+
+### Praca w tle:
+* Opcje działania w zasobniku systemowym (System Tray) oraz autostartu z systemem Windows.
 
 ---
 
-## Bezpieczeństwo i licencja
+## Plik konfiguracyjny
 
-* Projekt nie zbiera danych telemetrycznych.
-* Wszelkie poświadczenia są zabezpieczone kluczami kryptograficznymi bieżącego użytkownika Windows (DPAPI).
-
+* **Wersja instalacyjna:** `%LOCALAPPDATA%\BackupApp\config.json`
+* **Wersja przenośna (Portable):** `config.json` bezpośrednio w folderze aplikacji.
